@@ -1,56 +1,41 @@
 # Maintainer: Hadi Chokr <hadichokr at icloud dot com>
 pkgname=cosmic-greeter-git
-pkgver=r74.d133e60
+pkgver=r71.df9f209
 pkgrel=1
-pkgdesc="libcosmic greeter for greetd, which can be run inside cosmic-comp"
-arch=('x86_64' 'aarch64')
-url="https://github.com/pop-os/cosmic-greeter"
-license=('GPL-3.0-or-later')
-groups=('cosmic')
-depends=(
-  'cosmic-comp-git'
-  'greetd'
-  'libxkbcommon'
-  'pam'
-  'wayland'
+pkgdesc='cosmic-greeter'
+arch=('x86_64')
+url='https://github.com/pop-os/cosmic-greeter.git'
+license=('GPLv3')
+depends=('greetd' 'cosmic-comp' 'cosmic-bg')
+makedepends=('cargo' 'just' 'git' 'cmake' 'makepkg-git-lfs-proto')
+provides=('cosmic-greeter')
+conflicts=('cosmic-greeter')
+source=('git-lfs+https://github.com/pop-os/cosmic-greeter.git'
 )
-makedepends=(
-  'cargo'
-  'clang'
-  'git'
-  'just'
-  'mold'
-)
-provides=("${pkgname%-git}")
-conflicts=("${pkgname%-git}")
-source=('git+https://github.com/pop-os/cosmic-greeter.git')
 sha256sums=('SKIP')
 
 pkgver() {
-  cd "${pkgname%-git}"
+  cd "$srcdir/cosmic-greeter"
   printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 
-prepare() {
-  cd "${pkgname%-git}"
-  export CARGO_HOME="$srcdir/cargo-home"
-  export RUSTUP_TOOLCHAIN=stable
-  just vendor
-}
+## build with WITH GIT_LFS_SKIP_SMUDGE=1
+## Makepkg doesn't support LFS
+#prepare() {
+#  cd $srcdir/cosmic-greeter
+#  git lfs pull
+#}
 
 build() {
-  cd "${pkgname%-git}"
-  export CARGO_HOME="$srcdir/cargo-home"
-  export RUSTUP_TOOLCHAIN=stable
-
-  # use mold instead of lld to speed up build
-  RUSTFLAGS="-C link-arg=-fuse-ld=mold"
-
-  # use nice to build with lower priority
-  nice just build-vendored
+    cd $srcdir/cosmic-greeter
+    cargo build --all --release
 }
 
 package() {
-  cd "${pkgname%-git}"
-  just rootdir="$pkgdir" install
+  cd $srcdir/cosmic-greeter
+  just rootdir=$pkgdir install
+  #install -Dm755 debian/cosmic-greeter-daemon.service -t "${pkgdir}"/usr/lib/systemd/system/
+  install -Dm755 debian/cosmic-greeter.service -t "${pkgdir}"/usr/lib/systemd/system/
+  install -Dm755 cosmic-greeter.toml -t "${pkgdir}"/etc/greetd/
+  #make DESTDIR="$pkgdir" prefix="/usr" install
 }
